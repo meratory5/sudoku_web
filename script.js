@@ -384,6 +384,7 @@ class SudokuGame {
         this.timerInterval = null;
         this.memoMode = false; // メモモードフラグ
         this.errorCells = new Set(); // エラーセルのインデックスを保存
+        this.isCompleted = false; // 完成状態フラグ
 
         this.initializeUI();
         this.attachEventListeners();
@@ -430,78 +431,72 @@ class SudokuGame {
     }
 
     async newGame() {
-        this.showMessage('数独を生成中...', 'info');
+        this.showConfirm('数独を生成します。\n時間がかかることがあります。', async () => {
+            this.showMessage('数独を生成中...', 'info');
 
-        // UI更新を待つ
-        await new Promise(resolve => setTimeout(resolve, 100));
+            // UI更新を待つ
+            await new Promise(resolve => setTimeout(resolve, 100));
 
-        // 3秒後にメッセージを追加
-        const longTimeout = setTimeout(() => {
-            this.showMessage('数独を生成中...\n\n生成に時間がかかっています', 'info');
-        }, 3000);
+            const generator = new SudokuGenerator();
+            const result = await generator.createPuzzle('extreme');
 
-        const generator = new SudokuGenerator();
-        const result = await generator.createPuzzle('extreme');
+            this.puzzle = result.puzzle;
+            this.solution = result.solution;
+            this.userGrid = this.puzzle.map(row => [...row]);
+            this.userMemos = Array(9).fill(null).map(() => Array(9).fill(null).map(() => new Set()));
+            this.selectedCell = null;
+            this.errorCells.clear();
+            this.isCompleted = false;
 
-        clearTimeout(longTimeout);
+            document.getElementById('hint-count').textContent = result.hintCount;
+            document.getElementById('pattern-hint').textContent = ''; // 通常モードはパターンなし
 
-        this.puzzle = result.puzzle;
-        this.solution = result.solution;
-        this.userGrid = this.puzzle.map(row => [...row]);
-        this.userMemos = Array(9).fill(null).map(() => Array(9).fill(null).map(() => new Set()));
-        this.selectedCell = null;
-
-        document.getElementById('hint-count').textContent = result.hintCount;
-        document.getElementById('pattern-hint').textContent = ''; // 通常モードはパターンなし
-
-        this.renderBoard();
-        this.startTimer();
-        this.hideMessage();
+            this.renderBoard();
+            this.startTimer();
+            this.hideMessage();
+        });
     }
 
     async newGameExtreme() {
-        this.showMessage('EXTREME MODE!\n生成中...', 'info');
+        this.showConfirm('EXTREME MODE!\n数独を生成します。\n時間がかかることがあります。', async () => {
+            this.showMessage('EXTREME MODE!\n生成中...', 'info');
 
-        // UI更新を待つ
-        await new Promise(resolve => setTimeout(resolve, 100));
+            // UI更新を待つ
+            await new Promise(resolve => setTimeout(resolve, 100));
 
-        // 3秒後にメッセージを追加
-        const longTimeout = setTimeout(() => {
-            this.showMessage('EXTREME MODE!\n生成中...\n\n生成に時間がかかっています', 'info');
-        }, 3000);
+            // ランダムなパターンを選択
+            const patterns = ['checkerboard', 'heart', 'star', 'topleft', 'diagonal', 'cross', 'frame'];
+            const randomPattern = patterns[Math.floor(Math.random() * patterns.length)];
 
-        // ランダムなパターンを選択
-        const patterns = ['checkerboard', 'heart', 'star', 'topleft', 'diagonal', 'cross', 'frame'];
-        const randomPattern = patterns[Math.floor(Math.random() * patterns.length)];
+            const generator = new SudokuGenerator();
+            const result = await generator.createPuzzle('extreme', randomPattern);
 
-        const generator = new SudokuGenerator();
-        const result = await generator.createPuzzle('extreme', randomPattern);
+            this.puzzle = result.puzzle;
+            this.solution = result.solution;
+            this.userGrid = this.puzzle.map(row => [...row]);
+            this.userMemos = Array(9).fill(null).map(() => Array(9).fill(null).map(() => new Set()));
+            this.selectedCell = null;
+            this.errorCells.clear();
+            this.isCompleted = false;
 
-        clearTimeout(longTimeout);
+            document.getElementById('hint-count').textContent = result.hintCount;
 
-        this.puzzle = result.puzzle;
-        this.solution = result.solution;
-        this.userGrid = this.puzzle.map(row => [...row]);
-        this.userMemos = Array(9).fill(null).map(() => Array(9).fill(null).map(() => new Set()));
-        this.selectedCell = null;
+            // パターン名を極小で表示
+            const patternNames = {
+                'checkerboard': '市松模様',
+                'heart': 'ハート',
+                'star': '星',
+                'topleft': '左上',
+                'diagonal': '対角線',
+                'cross': '十字',
+                'frame': '額縁'
+            };
+            document.getElementById('pattern-hint').textContent = patternNames[randomPattern] || randomPattern;
 
-        document.getElementById('hint-count').textContent = result.hintCount;
-
-        // パターン名を極小で表示
-        const patternNames = {
-            'checkerboard': '市松模様',
-            'heart': 'ハート',
-            'star': '星',
-            'topleft': '左上',
-            'diagonal': '対角線',
-            'cross': '十字',
-            'frame': '額縁'
-        };
-        document.getElementById('pattern-hint').textContent = patternNames[randomPattern] || randomPattern;
-
-        this.renderBoard();
-        this.startTimer();
-        this.hideMessage();
+            this.renderBoard();
+            this.startTimer();
+            this.hideMessage();
+        });
     }
 
     renderBoard() {
@@ -567,9 +562,6 @@ class SudokuGame {
         const col = index % 9;
 
         if (this.puzzle[row][col] !== 0) return; // 固定セルは選択不可
-
-        // このセルのエラー表示をクリア
-        this.errorCells.delete(index);
 
         this.selectedCell = index;
         this.renderBoard();
@@ -642,21 +634,27 @@ class SudokuGame {
 
         if (this.isComplete() && !hasError) {
             this.stopTimer();
-            this.showMessage('完成！', 'success');
+            this.isCompleted = true;
+            this.showMessage('完成です！', 'success');
         } else if (hasError) {
             this.showMessage('間違いあり', 'error');
         } else {
-            this.showMessage('正解', 'success');
+            this.showMessage('ここまで正解です', 'success');
         }
     }
 
     showSolution() {
-        if (confirm('解答を表示しますか？')) {
+        if (this.isCompleted) {
+            return; // 完成済みの場合は何もしない
+        }
+        this.showConfirm('解答を表示しますか？', () => {
             this.userGrid = this.solution.map(row => [...row]);
+            this.errorCells.clear();
             this.renderBoard();
             this.stopTimer();
+            this.isCompleted = true;
             this.showMessage('解答を表示しました', 'info');
-        }
+        });
     }
 
     startTimer() {
@@ -679,9 +677,13 @@ class SudokuGame {
         document.getElementById('timer').textContent = `${minutes}:${seconds}`;
     }
 
-    showMessage(text, type) {
+    showMessage(text, type = 'info') {
         const msgElement = document.getElementById('status-message');
-        msgElement.textContent = text;
+        const textElement = msgElement.querySelector('.message-text');
+        const buttonsElement = msgElement.querySelector('.message-buttons');
+
+        textElement.textContent = text;
+        buttonsElement.innerHTML = '';
         msgElement.className = `status-message show ${type}`;
 
         // クリックまたはキー入力で即座に消す
@@ -691,17 +693,45 @@ class SudokuGame {
             document.removeEventListener('keydown', dismissHandler);
         };
 
-        // 少し遅延させてからイベントリスナーを設定（メッセージ表示直後のクリックを無視）
         setTimeout(() => {
             document.addEventListener('click', dismissHandler, { once: true });
             document.addEventListener('keydown', dismissHandler, { once: true });
         }, 100);
     }
 
+    showConfirm(text, onConfirm, type = 'info') {
+        const msgElement = document.getElementById('status-message');
+        const textElement = msgElement.querySelector('.message-text');
+        const buttonsElement = msgElement.querySelector('.message-buttons');
+
+        textElement.textContent = text;
+        buttonsElement.innerHTML = '';
+        msgElement.className = `status-message show ${type}`;
+
+        // はいボタン
+        const yesBtn = document.createElement('button');
+        yesBtn.textContent = 'はい';
+        yesBtn.addEventListener('click', () => {
+            this.hideMessage();
+            onConfirm();
+        });
+
+        // いいえボタン
+        const noBtn = document.createElement('button');
+        noBtn.textContent = 'いいえ';
+        noBtn.addEventListener('click', () => {
+            this.hideMessage();
+        });
+
+        buttonsElement.appendChild(yesBtn);
+        buttonsElement.appendChild(noBtn);
+    }
+
     hideMessage() {
         const msgElement = document.getElementById('status-message');
         msgElement.className = 'status-message';
     }
+
 }
 
 // ゲーム開始

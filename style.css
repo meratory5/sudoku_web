@@ -145,12 +145,6 @@ h1 {
     cursor: default;
 }
 
-.cell.selected {
-    background: #ffa !important;
-    outline: 2px solid #000;
-    outline-offset: -2px;
-}
-
 .cell.error {
     background: #fcc;
     color: #c00;
@@ -158,6 +152,12 @@ h1 {
 
 .cell.correct {
     color: #00c;
+}
+
+.cell.selected {
+    background: #ffa !important;
+    outline: 2px solid #000;
+    outline-offset: -2px;
 }
 
 /* 3x3ブロック境界を強調（太い線のみ、細い線は描かない） */
@@ -245,6 +245,16 @@ h1 {
     background: #ccc;
 }
 
+.shortcuts {
+    text-align: center;
+    font-size: 0.75em;
+    color: #999;
+    font-family: 'Courier New', Courier, monospace;
+    margin-top: 10px;
+    padding: 5px;
+    border-top: 1px solid #ddd;
+}
+
 .status-message {
     position: fixed;
     top: 50%;
@@ -283,13 +293,30 @@ h1 {
     color: #006;
 }
 
-/* ローディング表示 */
-.loading {
-    text-align: center;
-    padding: 20px;
-    font-size: 1.2em;
-    color: #666;
+.message-text {
+    margin-bottom: 15px;
+}
+
+.message-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.message-buttons button {
+    padding: 10px 20px;
+    font-size: 0.9em;
+    font-weight: bold;
     font-family: 'Courier New', Courier, monospace;
+    border: 2px solid #000;
+    background: #fff;
+    color: #000;
+    cursor: pointer;
+    transition: none;
+}
+
+.message-buttons button:hover {
+    background: #ccc;
 }
 
 /* レスポンシブ対応 */

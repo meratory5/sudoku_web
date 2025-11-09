@@ -36,35 +36,6 @@
 
 ---
 
-## ローカルで実行
-```bash
-# このリポジトリをクローン
-git clone https://github.com/meratory5/sudoku_web.git
-
-# ディレクトリに移動
-cd sudoku_web
-
-# index.htmlをブラウザで開く（Windows）
-start index.html
-
-# macOS / Linux
-open index.html
-```
-または `index.html` を直接ダブルクリックでも起動できます。
-
----
-
-## GitHub Pagesでの公開
-1. GitHubにリポジトリを作成  
-2. このコードをプッシュ  
-3. 「Settings」→「Pages」→ “Deploy from a branch” を選択  
-4. mainブランチを指定して保存  
-5. 数分後に  
-   `https://YOUR-USERNAME.github.io/sudoku_web/`  
-   でアクセス可能になります。
-
----
-
 ## 技術スタック
 - HTML5  
 - CSS3（Grid / Flexbox）  
