@@ -182,7 +182,7 @@ h1 {
 
 .number-pad {
     display: grid;
-    grid-template-columns: repeat(10, 1fr);
+    grid-template-columns: repeat(11, 1fr);
     gap: 3px;
     margin-bottom: 10px;
 }
@@ -223,6 +223,23 @@ h1 {
     background: #333;
 }
 
+.all-clear-btn {
+    background: #666;
+    color: #fff;
+    border: 2px solid #000;
+    font-size: 0.75em;
+    line-height: 1.2;
+    padding: 5px;
+    font-weight: bold;
+    font-family: 'Courier New', Courier, monospace;
+    cursor: pointer;
+    transition: none;
+}
+
+.all-clear-btn:hover {
+    background: #888;
+}
+
 .controls {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -244,6 +261,7 @@ h1 {
 .control-btn:hover {
     background: #ccc;
 }
+
 
 .shortcuts {
     text-align: center;
@@ -344,7 +362,7 @@ h1 {
     }
 
     .number-pad {
-        grid-template-columns: repeat(10, 1fr);
+        grid-template-columns: repeat(11, 1fr);
     }
 
     .controls {

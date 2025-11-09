@@ -385,6 +385,12 @@ class SudokuGame {
         this.memoMode = false; // メモモードフラグ
         this.errorCells = new Set(); // エラーセルのインデックスを保存
         this.isCompleted = false; // 完成状態フラグ
+        this.dismissHandler = null; // メッセージを消すためのイベントハンドラ
+        this.history = []; // Undo/Redo用の履歴
+        this.historyIndex = -1; // 現在の履歴位置
+        this.modalActive = false; // モーダル表示状態
+        this.modalSelectedButton = 0; // モーダルで選択中のボタン (0=Yes, 1=No)
+        this.clickOutsideHandler = null; // 外側クリックハンドラ
 
         this.initializeUI();
         this.attachEventListeners();
@@ -410,29 +416,106 @@ class SudokuGame {
         document.getElementById('check-btn').addEventListener('click', () => this.checkSolution());
         document.getElementById('solve-btn').addEventListener('click', () => this.showSolution());
         document.getElementById('memo-mode-btn').addEventListener('click', () => this.toggleMemoMode());
+        document.getElementById('all-clear-btn').addEventListener('click', () => this.allClear());
 
         document.querySelectorAll('.num-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const num = parseInt(btn.dataset.num);
-                this.placeNumber(num);
+                // data-num属性がある場合のみ処理（NaN防止）
+                if (btn.dataset.num !== undefined) {
+                    const num = parseInt(btn.dataset.num);
+                    this.placeNumber(num);
+                }
             });
         });
 
         // キーボード入力
         document.addEventListener('keydown', (e) => {
-            if (e.key >= '1' && e.key <= '9') {
+            // モーダルが表示されている場合の処理
+            if (this.modalActive) {
+                if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    this.modalSelectedButton = 1 - this.modalSelectedButton; // 0と1を切り替え
+                    this.updateModalButtonFocus();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.confirmModalSelection();
+                } else if (e.key === 'y' || e.key === 'Y') {
+                    e.preventDefault();
+                    this.modalSelectedButton = 0;
+                    this.confirmModalSelection();
+                } else if (e.key === 'n' || e.key === 'N') {
+                    e.preventDefault();
+                    this.modalSelectedButton = 1;
+                    this.confirmModalSelection();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    this.modalSelectedButton = 1; // No
+                    this.confirmModalSelection();
+                }
+                return; // モーダル表示中は他のキー操作を無効化
+            }
+
+            // 通常時の処理
+            // Ctrl/Cmd + Z: Undo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                this.undo();
+            }
+            // Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z: Redo
+            else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault();
+                this.redo();
+            }
+            // Arrow keys: Move selection
+            else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.moveSelection(0, -1);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.moveSelection(0, 1);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                this.moveSelection(-1, 0);
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                this.moveSelection(1, 0);
+            }
+            // Number input
+            else if (e.key >= '1' && e.key <= '9') {
                 this.placeNumber(parseInt(e.key));
             } else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') {
                 this.placeNumber(0);
-            } else if (e.key === 'm' || e.key === 'M') {
+            }
+            // M: Toggle memo mode
+            else if (e.key === 'm' || e.key === 'M') {
                 this.toggleMemoMode();
+            }
+            // N: New game
+            else if (e.key === 'n' || e.key === 'N') {
+                this.newGame();
+            }
+            // E: Extreme game
+            else if (e.key === 'e' || e.key === 'E') {
+                this.newGameExtreme();
+            }
+            // C: Check solution
+            else if (e.key === 'c' || e.key === 'C') {
+                this.checkSolution();
+            }
+            // S: Show solution
+            else if (e.key === 's' || e.key === 'S') {
+                this.showSolution();
+            }
+            // R: All clear (Reset)
+            else if (e.key === 'r' || e.key === 'R') {
+                this.allClear();
             }
         });
     }
 
     async newGame() {
-        this.showConfirm('数独を生成します。\n時間がかかることがあります。', async () => {
-            this.showMessage('数独を生成中...', 'info');
+        this.showConfirm('Generate new sudoku?\nThis may take a while.', async () => {
+            this.showMessage('Generating sudoku...', 'info');
 
             // UI更新を待つ
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -448,8 +531,13 @@ class SudokuGame {
             this.errorCells.clear();
             this.isCompleted = false;
 
+            // 履歴を初期化
+            this.history = [];
+            this.historyIndex = -1;
+            this.saveState();
+
             document.getElementById('hint-count').textContent = result.hintCount;
-            document.getElementById('pattern-hint').textContent = ''; // 通常モードはパターンなし
+            document.getElementById('pattern-hint').textContent = '';
 
             this.renderBoard();
             this.startTimer();
@@ -458,8 +546,8 @@ class SudokuGame {
     }
 
     async newGameExtreme() {
-        this.showConfirm('EXTREME MODE!\n数独を生成します。\n時間がかかることがあります。', async () => {
-            this.showMessage('EXTREME MODE!\n生成中...', 'info');
+        this.showConfirm('EXTREME MODE!\nGenerate new sudoku?\nThis may take a while.', async () => {
+            this.showMessage('EXTREME MODE!\nGenerating...', 'info');
 
             // UI更新を待つ
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -479,17 +567,22 @@ class SudokuGame {
             this.errorCells.clear();
             this.isCompleted = false;
 
+            // 履歴を初期化
+            this.history = [];
+            this.historyIndex = -1;
+            this.saveState();
+
             document.getElementById('hint-count').textContent = result.hintCount;
 
             // パターン名を極小で表示
             const patternNames = {
-                'checkerboard': '市松模様',
-                'heart': 'ハート',
-                'star': '星',
-                'topleft': '左上',
-                'diagonal': '対角線',
-                'cross': '十字',
-                'frame': '額縁'
+                'checkerboard': 'Checkerboard',
+                'heart': 'Heart',
+                'star': 'Star',
+                'topleft': 'Top-left',
+                'diagonal': 'Diagonal',
+                'cross': 'Cross',
+                'frame': 'Frame'
             };
             document.getElementById('pattern-hint').textContent = patternNames[randomPattern] || randomPattern;
 
@@ -552,18 +645,27 @@ class SudokuGame {
     toggleMemoMode() {
         this.memoMode = !this.memoMode;
         const btn = document.getElementById('memo-mode-btn');
-        btn.textContent = this.memoMode ? 'メモモード: ON' : 'メモモード: OFF';
+        btn.textContent = this.memoMode ? 'MEMO: ON' : 'MEMO: OFF';
         btn.style.background = this.memoMode ? '#000' : '#fff';
         btn.style.color = this.memoMode ? '#fff' : '#000';
     }
 
     selectCell(index) {
-        const row = Math.floor(index / 9);
-        const col = index % 9;
-
-        if (this.puzzle[row][col] !== 0) return; // 固定セルは選択不可
-
+        // 固定セルも選択可能にする（移動可能にするため）
         this.selectedCell = index;
+        this.renderBoard();
+    }
+
+    moveSelection(dx, dy) {
+        if (this.selectedCell === null) {
+            this.selectedCell = 0; // セルが選択されていない場合は最初のセルを選択
+        } else {
+            const row = Math.floor(this.selectedCell / 9);
+            const col = this.selectedCell % 9;
+            const newRow = Math.max(0, Math.min(8, row + dy));
+            const newCol = Math.max(0, Math.min(8, col + dx));
+            this.selectedCell = newRow * 9 + newCol;
+        }
         this.renderBoard();
     }
 
@@ -574,6 +676,9 @@ class SudokuGame {
         const col = this.selectedCell % 9;
 
         if (this.puzzle[row][col] !== 0) return; // 固定セルは変更不可
+
+        // 変更前の状態を保存
+        this.saveState();
 
         // このセルのエラー表示をクリア
         this.errorCells.delete(this.selectedCell);
@@ -608,13 +713,71 @@ class SudokuGame {
         }
     }
 
+    saveState() {
+        // 現在の状態を履歴に保存
+        const state = {
+            userGrid: this.userGrid.map(row => [...row]),
+            userMemos: this.userMemos.map(row => row.map(set => new Set(set)))
+        };
+
+        // 現在の位置より後の履歴を削除
+        this.history = this.history.slice(0, this.historyIndex + 1);
+        this.history.push(state);
+        this.historyIndex++;
+
+        // 履歴が長すぎる場合は古いものを削除（最大100ステップ）
+        if (this.history.length > 100) {
+            this.history.shift();
+            this.historyIndex--;
+        }
+    }
+
+    undo() {
+        if (this.historyIndex > 0) {
+            this.historyIndex--;
+            const state = this.history[this.historyIndex];
+            this.userGrid = state.userGrid.map(row => [...row]);
+            this.userMemos = state.userMemos.map(row => row.map(set => new Set(set)));
+            this.errorCells.clear();
+            this.renderBoard();
+        }
+    }
+
+    redo() {
+        if (this.historyIndex < this.history.length - 1) {
+            this.historyIndex++;
+            const state = this.history[this.historyIndex];
+            this.userGrid = state.userGrid.map(row => [...row]);
+            this.userMemos = state.userMemos.map(row => row.map(set => new Set(set)));
+            this.errorCells.clear();
+            this.renderBoard();
+        }
+    }
+
+    allClear() {
+        this.showConfirm('Reset to initial state?', () => {
+            // パズルの初期状態に戻す
+            this.userGrid = this.puzzle.map(row => [...row]);
+            this.userMemos = Array(9).fill(null).map(() => Array(9).fill(null).map(() => new Set()));
+            this.errorCells.clear();
+
+            // 履歴をリセット
+            this.history = [];
+            this.historyIndex = -1;
+            this.saveState();
+
+            this.renderBoard();
+            this.showMessage('Reset complete', 'info');
+        });
+    }
+
     isComplete() {
         return this.userGrid.every(row => row.every(cell => cell !== 0));
     }
 
     checkSolution() {
         let hasError = false;
-        this.errorCells.clear(); // エラーセルをリセット
+        this.errorCells.clear();
 
         for (let index = 0; index < 81; index++) {
             const row = Math.floor(index / 9);
@@ -630,30 +793,30 @@ class SudokuGame {
             }
         }
 
-        this.renderBoard(); // エラー表示を反映
+        this.renderBoard();
 
         if (this.isComplete() && !hasError) {
             this.stopTimer();
             this.isCompleted = true;
-            this.showMessage('完成です！', 'success');
+            this.showMessage('Complete!', 'success');
         } else if (hasError) {
-            this.showMessage('間違いあり', 'error');
+            this.showMessage('Error found', 'error');
         } else {
-            this.showMessage('ここまで正解です', 'success');
+            this.showMessage('Correct so far', 'success');
         }
     }
 
     showSolution() {
         if (this.isCompleted) {
-            return; // 完成済みの場合は何もしない
+            return;
         }
-        this.showConfirm('解答を表示しますか？', () => {
+        this.showConfirm('Show solution?', () => {
             this.userGrid = this.solution.map(row => [...row]);
             this.errorCells.clear();
             this.renderBoard();
             this.stopTimer();
             this.isCompleted = true;
-            this.showMessage('解答を表示しました', 'info');
+            this.showMessage('Solution displayed', 'info');
         });
     }
 
@@ -682,20 +845,21 @@ class SudokuGame {
         const textElement = msgElement.querySelector('.message-text');
         const buttonsElement = msgElement.querySelector('.message-buttons');
 
+        // 既存のイベントリスナーを削除
+        this.removeMessageDismissHandler();
+
         textElement.textContent = text;
         buttonsElement.innerHTML = '';
         msgElement.className = `status-message show ${type}`;
 
         // クリックまたはキー入力で即座に消す
-        const dismissHandler = () => {
+        this.dismissHandler = () => {
             this.hideMessage();
-            document.removeEventListener('click', dismissHandler);
-            document.removeEventListener('keydown', dismissHandler);
         };
 
         setTimeout(() => {
-            document.addEventListener('click', dismissHandler, { once: true });
-            document.addEventListener('keydown', dismissHandler, { once: true });
+            document.addEventListener('click', this.dismissHandler, { once: true });
+            document.addEventListener('keydown', this.dismissHandler, { once: true });
         }, 100);
     }
 
@@ -704,32 +868,105 @@ class SudokuGame {
         const textElement = msgElement.querySelector('.message-text');
         const buttonsElement = msgElement.querySelector('.message-buttons');
 
+        // 既存の外側クリックハンドラを削除
+        this.removeClickOutsideHandler();
+
+        this.modalActive = true;
+        this.modalSelectedButton = 0; // デフォルトはYes
+        this.modalOnConfirm = onConfirm;
+
         textElement.textContent = text;
         buttonsElement.innerHTML = '';
         msgElement.className = `status-message show ${type}`;
 
-        // はいボタン
+        // Yes button
         const yesBtn = document.createElement('button');
-        yesBtn.textContent = 'はい';
+        yesBtn.textContent = 'Yes';
+        yesBtn.className = 'modal-btn-yes';
         yesBtn.addEventListener('click', () => {
-            this.hideMessage();
-            onConfirm();
+            this.modalSelectedButton = 0;
+            this.confirmModalSelection();
         });
 
-        // いいえボタン
+        // No button
         const noBtn = document.createElement('button');
-        noBtn.textContent = 'いいえ';
+        noBtn.textContent = 'No';
+        noBtn.className = 'modal-btn-no';
         noBtn.addEventListener('click', () => {
-            this.hideMessage();
+            this.modalSelectedButton = 1;
+            this.confirmModalSelection();
         });
 
         buttonsElement.appendChild(yesBtn);
         buttonsElement.appendChild(noBtn);
+
+        // 外側クリックでNo
+        setTimeout(() => {
+            this.clickOutsideHandler = (e) => {
+                if (!msgElement.contains(e.target)) {
+                    this.modalSelectedButton = 1; // No
+                    this.confirmModalSelection();
+                }
+            };
+            document.addEventListener('click', this.clickOutsideHandler);
+        }, 100);
+
+        this.updateModalButtonFocus();
+    }
+
+    updateModalButtonFocus() {
+        const yesBtn = document.querySelector('.modal-btn-yes');
+        const noBtn = document.querySelector('.modal-btn-no');
+
+        if (yesBtn && noBtn) {
+            if (this.modalSelectedButton === 0) {
+                yesBtn.style.background = '#000';
+                yesBtn.style.color = '#fff';
+                noBtn.style.background = '#fff';
+                noBtn.style.color = '#000';
+            } else {
+                yesBtn.style.background = '#fff';
+                yesBtn.style.color = '#000';
+                noBtn.style.background = '#000';
+                noBtn.style.color = '#fff';
+            }
+        }
+    }
+
+    confirmModalSelection() {
+        this.modalActive = false;
+        this.hideMessage();
+
+        if (this.modalSelectedButton === 0 && this.modalOnConfirm) {
+            this.modalOnConfirm();
+        }
+
+        this.modalOnConfirm = null;
     }
 
     hideMessage() {
         const msgElement = document.getElementById('status-message');
         msgElement.className = 'status-message';
+        this.modalActive = false;
+        this.removeMessageDismissHandler();
+        this.removeClickOutsideHandler();
+    }
+
+    removeMessageDismissHandler() {
+        // イベントリスナーを確実に削除
+        if (this.dismissHandler) {
+            document.removeEventListener('click', this.dismissHandler);
+            document.removeEventListener('keydown', this.dismissHandler);
+            this.dismissHandler = null;
+        }
+    }
+
+    removeClickOutsideHandler() {
+        // 外側クリックハンドラを確実に削除
+        if (this.clickOutsideHandler) {
+            document.removeEventListener('click', this.clickOutsideHandler);
+            this.clickOutsideHandler = null;
+        }
     }
 
 }
