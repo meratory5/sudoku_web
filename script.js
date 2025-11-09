@@ -648,12 +648,49 @@ class SudokuGame {
         btn.textContent = this.memoMode ? 'MEMO: ON' : 'MEMO: OFF';
         btn.style.background = this.memoMode ? '#000' : '#fff';
         btn.style.color = this.memoMode ? '#fff' : '#000';
+        this.updateNumberButtons();
+    }
+
+    updateNumberButtons() {
+        const buttons = document.querySelectorAll('.num-btn');
+
+        // すべてのボタンの選択状態をクリア
+        buttons.forEach(btn => btn.classList.remove('selected'));
+
+        if (this.selectedCell === null) {
+            return; // マスが選択されていない場合は何もしない
+        }
+
+        const row = Math.floor(this.selectedCell / 9);
+        const col = this.selectedCell % 9;
+
+        if (this.memoMode) {
+            // メモモード：メモの内容を反映
+            const memos = this.userMemos[row][col];
+            buttons.forEach(btn => {
+                const num = parseInt(btn.dataset.num);
+                if (num >= 1 && num <= 9 && memos.has(num)) {
+                    btn.classList.add('selected');
+                }
+            });
+        } else {
+            // 通常モード：本番の数字を反映
+            const value = this.userGrid[row][col];
+            if (value !== 0) {
+                buttons.forEach(btn => {
+                    if (parseInt(btn.dataset.num) === value) {
+                        btn.classList.add('selected');
+                    }
+                });
+            }
+        }
     }
 
     selectCell(index) {
         // 固定セルも選択可能にする（移動可能にするため）
         this.selectedCell = index;
         this.renderBoard();
+        this.updateNumberButtons();
     }
 
     moveSelection(dx, dy) {
@@ -667,6 +704,7 @@ class SudokuGame {
             this.selectedCell = newRow * 9 + newCol;
         }
         this.renderBoard();
+        this.updateNumberButtons();
     }
 
     placeNumber(num) {
@@ -685,6 +723,11 @@ class SudokuGame {
 
         if (this.memoMode) {
             // メモモード
+            // 本番の数字がある場合は消す
+            if (this.userGrid[row][col] !== 0) {
+                this.userGrid[row][col] = 0;
+            }
+
             if (num === 0) {
                 // ×ボタン：メモを全削除
                 this.userMemos[row][col].clear();
@@ -699,13 +742,11 @@ class SudokuGame {
         } else {
             // 通常モード
             this.userGrid[row][col] = num;
-            // 本物の数字を入れたらメモを消す
-            if (num !== 0) {
-                this.userMemos[row][col].clear();
-            }
+            // メモはそのまま保持する（本番の数字があるときは表示されないが、データは残す）
         }
 
         this.renderBoard();
+        this.updateNumberButtons();
 
         // 完成チェック
         if (this.isComplete()) {
@@ -740,6 +781,7 @@ class SudokuGame {
             this.userMemos = state.userMemos.map(row => row.map(set => new Set(set)));
             this.errorCells.clear();
             this.renderBoard();
+            this.updateNumberButtons();
         }
     }
 
@@ -751,6 +793,7 @@ class SudokuGame {
             this.userMemos = state.userMemos.map(row => row.map(set => new Set(set)));
             this.errorCells.clear();
             this.renderBoard();
+            this.updateNumberButtons();
         }
     }
 

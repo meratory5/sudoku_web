@@ -94,6 +94,25 @@ h1 {
     width: 100%;
     max-width: 450px;
     height: 450px;
+    position: relative;
+}
+
+/* 3x3ブロックの太い線を最前面に表示 */
+.game-board::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        linear-gradient(to right, transparent calc(33.333% - 1.5px), #000 calc(33.333% - 1.5px), #000 calc(33.333% + 1.5px), transparent calc(33.333% + 1.5px)),
+        linear-gradient(to right, transparent calc(66.666% - 1.5px), #000 calc(66.666% - 1.5px), #000 calc(66.666% + 1.5px), transparent calc(66.666% + 1.5px)),
+        linear-gradient(to bottom, transparent calc(33.333% - 1.5px), #000 calc(33.333% - 1.5px), #000 calc(33.333% + 1.5px), transparent calc(33.333% + 1.5px)),
+        linear-gradient(to bottom, transparent calc(66.666% - 1.5px), #000 calc(66.666% - 1.5px), #000 calc(66.666% + 1.5px), transparent calc(66.666% + 1.5px));
+    background-repeat: no-repeat;
+    pointer-events: none;
+    z-index: 2;
 }
 
 .cell {
@@ -110,6 +129,7 @@ h1 {
     cursor: pointer;
     transition: none;
     position: relative;
+    z-index: 0;
 }
 
 .cell-memos {
@@ -156,19 +176,29 @@ h1 {
 
 .cell.selected {
     background: #ffa !important;
-    outline: 2px solid #000;
-    outline-offset: -2px;
+    z-index: 1;
 }
 
-/* 3x3ブロック境界を強調（太い線のみ、細い線は描かない） */
+.cell.selected::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border: 2px solid #000;
+    pointer-events: none;
+}
+
+/* 3x3ブロック境界の位置には線を引かない（game-board::afterで描画） */
 .cell:nth-child(9n+3),
 .cell:nth-child(9n+6) {
-    border-right: 3px solid #000;
+    border-right: none;
 }
 
 .cell:nth-child(n+19):nth-child(-n+27),
 .cell:nth-child(n+46):nth-child(-n+54) {
-    border-bottom: 3px solid #000;
+    border-bottom: none;
 }
 
 /* 最右列と最下行は細い線も不要 */
@@ -200,6 +230,11 @@ h1 {
 
 .num-btn:hover {
     background: #ccc;
+}
+
+.num-btn.selected {
+    background: #ccc;
+    color: #000;
 }
 
 .num-btn.erase {
