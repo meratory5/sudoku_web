@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数独ゲーム - Minimal Hints Challenge</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SUDOKU</h1>
+            <div id="pattern-hint" class="pattern-hint"></div>
+        </header>
+
+        <div class="info-panel">
+            <div class="info-item">
+                <span class="label">ヒント数:</span>
+                <span id="hint-count" class="value">-</span>
+            </div>
+            <div class="info-item">
+                <span class="label">経過時間:</span>
+                <span id="timer" class="value">00:00</span>
+            </div>
+        </div>
+
+        <div class="game-board" id="game-board">
+            <!-- グリッドはJavaScriptで生成 -->
+        </div>
+
+        <div class="number-pad">
+            <button class="num-btn" data-num="1">1</button>
+            <button class="num-btn" data-num="2">2</button>
+            <button class="num-btn" data-num="3">3</button>
+            <button class="num-btn" data-num="4">4</button>
+            <button class="num-btn" data-num="5">5</button>
+            <button class="num-btn" data-num="6">6</button>
+            <button class="num-btn" data-num="7">7</button>
+            <button class="num-btn" data-num="8">8</button>
+            <button class="num-btn" data-num="9">9</button>
+            <button class="num-btn erase" data-num="0">X</button>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <button id="memo-mode-btn" class="control-btn" style="width: 100%;">メモモード: OFF</button>
+        </div>
+
+        <div class="controls">
+            <button id="new-game-btn" class="control-btn">新規生成</button>
+            <button id="extreme-btn" class="control-btn">EXTREME生成</button>
+            <button id="check-btn" class="control-btn">正誤確認</button>
+            <button id="solve-btn" class="control-btn">解答表示</button>
+        </div>
+
+        <div id="status-message" class="status-message"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', Courier, monospace;
+    background: #ccc;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+}
+
+.container {
+    background: #fff;
+    border: 3px solid #000;
+    padding: 15px;
+    max-width: 550px;
+    width: 100%;
+    position: relative;
+}
+
+.pattern-hint {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    font-size: 2px;
+    color: #999;
+    opacity: 0.5;
+    pointer-events: none;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 15px;
+    border-bottom: 3px solid #000;
+    padding-bottom: 10px;
+    position: relative;
+}
+
+h1 {
+    color: #000;
+    font-size: 2.5em;
+    font-weight: bold;
+    margin: 0;
+    font-family: 'Courier New', Courier, monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: inline-block;
+}
+
+.info-panel {
+    display: flex;
+    justify-content: space-around;
+    background: #eee;
+    border: 2px solid #000;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.info-item {
+    text-align: center;
+}
+
+.label {
+    display: block;
+    font-size: 0.8em;
+    color: #666;
+    margin-bottom: 5px;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.value {
+    display: block;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #000;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.game-board {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    gap: 0;
+    background: #000;
+    border: 3px solid #000;
+    margin: 0 auto 15px;
+    width: 100%;
+    max-width: 450px;
+    height: 450px;
+}
+
+.cell {
+    background: #fff;
+    border: none;
+    border-right: 1px solid #999;
+    border-bottom: 1px solid #999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: bold;
+    font-family: 'Courier New', Courier, monospace;
+    cursor: pointer;
+    transition: none;
+    position: relative;
+}
+
+.cell-memos {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    font-size: 11px;
+    font-weight: normal;
+    color: #666;
+    line-height: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 0;
+    padding: 2px;
+}
+
+.cell-memo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cell:hover:not(.fixed) {
+    background: #eee;
+}
+
+.cell.fixed {
+    background: #ddd;
+    color: #000;
+    cursor: default;
+}
+
+.cell.selected {
+    background: #ffa !important;
+    outline: 2px solid #000;
+    outline-offset: -2px;
+}
+
+.cell.error {
+    background: #fcc;
+    color: #c00;
+}
+
+.cell.correct {
+    color: #00c;
+}
+
+/* 3x3ブロック境界を強調（太い線のみ、細い線は描かない） */
+.cell:nth-child(9n+3),
+.cell:nth-child(9n+6) {
+    border-right: 3px solid #000;
+}
+
+.cell:nth-child(n+19):nth-child(-n+27),
+.cell:nth-child(n+46):nth-child(-n+54) {
+    border-bottom: 3px solid #000;
+}
+
+/* 最右列と最下行は細い線も不要 */
+.cell:nth-child(9n) {
+    border-right: none;
+}
+
+.cell:nth-child(n+73) {
+    border-bottom: none;
+}
+
+.number-pad {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 3px;
+    margin-bottom: 10px;
+}
+
+.num-btn {
+    padding: 10px 5px;
+    font-size: 1.3em;
+    font-weight: bold;
+    font-family: 'Courier New', Courier, monospace;
+    border: 2px solid #000;
+    background: #fff;
+    cursor: pointer;
+    transition: none;
+}
+
+.num-btn:hover {
+    background: #ccc;
+}
+
+.num-btn.erase {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+}
+
+.num-btn.erase:hover {
+    background: #333;
+}
+
+.num-btn.memo-mode {
+    background: #000;
+    color: #fff;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 2px #000;
+}
+
+.num-btn.memo-mode:hover {
+    background: #333;
+}
+
+.controls {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px;
+}
+
+.control-btn {
+    padding: 10px;
+    font-size: 0.9em;
+    font-weight: bold;
+    font-family: 'Courier New', Courier, monospace;
+    border: 2px solid #000;
+    background: #fff;
+    color: #000;
+    cursor: pointer;
+    transition: none;
+}
+
+.control-btn:hover {
+    background: #ccc;
+}
+
+.status-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px 40px;
+    border: 3px solid #000;
+    text-align: center;
+    font-weight: bold;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.2em;
+    display: none;
+    background: #fff;
+    z-index: 1000;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    white-space: pre-line;
+    max-width: 80%;
+}
+
+.status-message.show {
+    display: block;
+}
+
+.status-message.success {
+    background: #cfc;
+    color: #060;
+}
+
+.status-message.error {
+    background: #fcc;
+    color: #c00;
+}
+
+.status-message.info {
+    background: #ccf;
+    color: #006;
+}
+
+/* ローディング表示 */
+.loading {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.2em;
+    color: #666;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 500px) {
+    .container {
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 2em;
+    }
+
+    .info-panel {
+        padding: 8px;
+        font-size: 0.85em;
+    }
+
+    .game-board {
+        height: auto;
+        aspect-ratio: 1;
+    }
+
+    .cell {
+        font-size: 18px;
+    }
+
+    .number-pad {
+        grid-template-columns: repeat(10, 1fr);
+    }
+
+    .controls {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .control-btn {
+        font-size: 0.8em;
+        padding: 8px;
+    }
+}
