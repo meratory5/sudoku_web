@@ -759,9 +759,6 @@ class SudokuGame {
 
         if (this.puzzle[row][col] !== 0) return; // 固定セルは変更不可
 
-        // 変更前の状態を保存
-        this.saveState();
-
         // このセルのエラー表示をクリア
         this.errorCells.delete(this.selectedCell);
 
@@ -788,6 +785,9 @@ class SudokuGame {
             this.userGrid[row][col] = num;
             // メモはそのまま保持する（本番の数字があるときは表示されないが、データは残す）
         }
+
+        // 変更後の状態を保存
+        this.saveState();
 
         this.renderBoard();
         this.updateNumberButtons();
